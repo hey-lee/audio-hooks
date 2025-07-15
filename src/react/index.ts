@@ -23,6 +23,8 @@ export interface AudioControls {
   play: () => void
   /** Pause the current audio track */
   pause: () => void
+  /** Toggle between play and pause */
+  toggle: () => void
   /** Skip to next track based on current play mode */
   next: () => void
   /** Go to previous track based on current play mode */
@@ -275,6 +277,9 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
     pause: () => {
       audioRef.current?.pause()
       setPlaying(false)
+    },
+    toggle: () => {
+      playing ? controls.pause() : controls.play()
     },
     playTrack,
     setList,
