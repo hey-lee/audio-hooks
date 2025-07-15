@@ -16,9 +16,9 @@ type PlayMode = 'RepeatOne' | 'RepeatAll' | 'Shuffle'
 const modes: PlayMode[] = [`RepeatOne`, `RepeatAll`, `Shuffle`]
 
 /**
- * Controls interface for audio playback functionality
+ * AudioControls interface for audio playback functionality
  */
-type Controls = {
+export interface AudioControls {
   /** Start playing the current audio track */
   play: () => void
   /** Pause the current audio track */
@@ -61,7 +61,7 @@ type Controls = {
 /**
  * State interface for audio playback functionality
  */
-type State = {
+export interface AudioState {
   list: string[]
   /** Whether audio is currently playing */
   playing: boolean
@@ -86,8 +86,8 @@ type State = {
  * @property setList - Function to update the list of audio URLs
  */
 export type UseAudioListReturn = {
-  state: State
-  controls: Controls
+  state: AudioState
+  controls: AudioControls
 }
 
 /**
@@ -108,17 +108,17 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
   const audioPoolRef = useRef<HTMLAudioElement[]>([])
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const gainNode = useGain(0.5)
-  const playModeRef = useRef<State['playMode']>(`RepeatAll`)
-  const playingIndexRef = useRef<State['playingIndex']>(-1)
+  const playModeRef = useRef<AudioState['playMode']>(`RepeatAll`)
+  const playingIndexRef = useRef<AudioState['playingIndex']>(-1)
 
   const [_urls, setList] = useState(urls)
-  const [playing, setPlaying] = useState<State['playing']>(false)
-  const [duration, setDuration] = useState<State['duration']>(0)
-  const [volume, setVolume] = useState<State['volume']>(0.5)
-  const [currentTime, setCurrentTime] = useState<State['currentTime']>(0)
-  const [playbackRate, setPlaybackRate] = useState<State['playbackRate']>(1)
+  const [playing, setPlaying] = useState<AudioState['playing']>(false)
+  const [duration, setDuration] = useState<AudioState['duration']>(0)
+  const [volume, setVolume] = useState<AudioState['volume']>(0.5)
+  const [currentTime, setCurrentTime] = useState<AudioState['currentTime']>(0)
+  const [playbackRate, setPlaybackRate] = useState<AudioState['playbackRate']>(1)
 
-  const state: State = useMemo(() => ({
+  const state: AudioState = useMemo(() => ({
     list: _urls,
     volume,
     playing,
@@ -261,7 +261,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
     playTrack(getNextIndex())
   }
 
-  const controls: Controls = {
+  const controls: AudioControls = {
     play: async () => {
       if (audioRef.current) {
         await audioRef.current.play()
