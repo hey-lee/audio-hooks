@@ -1,18 +1,19 @@
+
+import { randomPlayingIndex } from './fns'
 import { useState, useRef, useCallback, useMemo } from 'react'
 import { useGain, useAudioContext } from 'web-audio-hooks/react'
-import { randomPlayingIndex } from './fns'
 
 export { AudioProvider } from 'web-audio-hooks/react'
 
 /**
  * Represents the playback mode for audio tracks
- * @typedef {('RepeatAll' | 'RepeatOne' | 'SShuffle')} PlayMode
+ * @typedef {('RO' | 'RA' | 'S')} PlayMode
  * - 'RO' - Repeat One playback mode
  * - 'RA' - Repeat All playback mode
  * - 'S' - Shuffle playback mode
  */
-type PlayMode = 'RepeatAll' | 'RepeatOne' | 'Shuffle'
-const modes: PlayMode[] = [`RepeatAll`, `RepeatOne`, `Shuffle`]
+type PlayMode = 'RepeatOne' | 'RepeatAll' | 'Shuffle'
+const modes: PlayMode[] = [`RepeatOne`, `RepeatAll`, `Shuffle`]
 
 /**
  * Controls interface for audio playback functionality
@@ -176,7 +177,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
           audio.currentTime = 0
           audio.play()   
         } else {
-          playNext()
+          playNextTrack()
         }
         audioPoolRef.current.push(audio)
       }
@@ -227,38 +228,6 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
 
   }, [context, _urls, initAudio])
 
-  const play = async () => {
-    if (audioRef.current) {
-      await audioRef.current.play()
-      setPlaying(true)
-    } else {
-      if (_urls.length > 0) {
-        playTrack(0)
-      }
-    }
-  }
-
-  const pause = () => {
-    audioRef.current?.pause()
-    setPlaying(false)
-  }
-
-  const seek = (time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time
-    }
-  }
-
-  const nextPlayMode = (_mode?: PlayMode) => {
-    if (_mode) {
-      playModeRef.current = _mode
-    } else {
-      const currentIndex = modes.indexOf(playModeRef.current)
-      const nextIndex = (currentIndex + 1) % modes.length
-      playModeRef.current = modes[nextIndex]
-    }
-  }
-
   const getPrevIndex = () => {
     if (_urls.length === 0) return -1
     if (playModeRef.current === `Shuffle`) {
@@ -284,28 +253,49 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
     return playingIndexRef.current + 1
   }
 
-  const playPrev = () => {
+  const playPrevTrack = () => {
     playTrack(getPrevIndex())
   }
 
-  const playNext = () => {
+  const playNextTrack = () => {
     playTrack(getNextIndex())
   }
 
   const controls: Controls = {
-    play,
-    pause,
+    play: async () => {
+      if (audioRef.current) {
+        await audioRef.current.play()
+        setPlaying(true)
+      } else {
+        if (_urls.length > 0) {
+          playTrack(0)
+        }
+      }
+    },
+    pause: () => {
+      audioRef.current?.pause()
+      setPlaying(false)
+    },
     playTrack,
-    seek,
-    prev: playPrev,
-    next: playNext,
     setList,
-    nextPlayMode,
+    prev: playPrevTrack,
+    next: playNextTrack,
+    seek: (time: number) => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = time
+      }
+    },
     setVolume: (volume: number) => {
       setVolume(volume)
       if (gainNode) {
         gainNode.gain.setValueAtTime(volume, context?.currentTime || 0)
       }
+    },
+    nextPlayMode: (_mode?: PlayMode) => {
+      const currentIndex = modes.indexOf(playModeRef.current)
+      const nextIndex = (currentIndex + 1) % modes.length
+      const mode = _mode || modes[nextIndex]
+      playModeRef.current = mode
     },
     setPlaybackRate: (rate: number) => {
       rate = Math.min(Math.max(rate, 0.5), 3.0)
