@@ -23,8 +23,8 @@ export interface AudioControls {
   play: () => void
   /** Pause the current audio track */
   pause: () => void
-  /** Toggle between play and pause */
-  toggle: () => void
+  /** Toggle play between play and pause */
+  togglePlay: () => void
   /** Skip to next track based on current play mode */
   next: () => void
   /** Go to previous track based on current play mode */
@@ -110,8 +110,8 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
   const audioPoolRef = useRef<HTMLAudioElement[]>([])
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const gainNode = useGain(0.5)
-  const playModeRef = useRef<AudioState['playMode']>(`RepeatAll`)
-  const playingIndexRef = useRef<AudioState['playingIndex']>(-1)
+  const [playMode, setPlayMode] = useState<AudioState['playMode']>(`RepeatAll`)
+  const [playingIndex, setPlayingIndex] = useState<AudioState['playingIndex']>(-1)
 
   const [_urls, setList] = useState(urls)
   const [playing, setPlaying] = useState<AudioState['playing']>(false)
@@ -127,8 +127,8 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
     duration,
     currentTime,
     playbackRate,
-    playMode: playModeRef.current,
-    playingIndex: playingIndexRef.current,
+    playMode,
+    playingIndex,
   }), [
     _urls,
     volume,
@@ -136,8 +136,8 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
     duration,
     currentTime,
     playbackRate,
-    playModeRef,
-    playingIndexRef,
+    playMode,
+    playingIndex,
   ])
 
   const getAudio = (url?: string) => {
@@ -175,7 +175,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       }
 
       const onAudioEnded = () => {
-        if (playModeRef.current === `RepeatOne`) {
+        if (playMode === `RepeatOne`) {
           audio.currentTime = 0
           audio.play()   
         } else {
@@ -213,10 +213,10 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       return
     }
 
-    playingIndexRef.current = index
+    setPlayingIndex(index)
 
     setPlaying(false)
-    initAudio(_urls[playingIndexRef.current])
+    initAudio(_urls[playingIndex])
 
     try {
       if (context?.state === `suspended`) {
@@ -232,27 +232,27 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
 
   const getPrevIndex = () => {
     if (_urls.length === 0) return -1
-    if (playModeRef.current === `Shuffle`) {
-      return randomPlayingIndex(playingIndexRef.current, _urls.length)
+    if (playMode === `Shuffle`) {
+      return randomPlayingIndex(playingIndex, _urls.length)
     }
-    if (playingIndexRef.current <= 0) {
+    if (playingIndex <= 0) {
       return _urls.length - 1
     }
-    return playingIndexRef.current - 1
+    return playingIndex - 1
   }
   const getNextIndex = () => {
     if (_urls.length === 0) return -1
-    if (_urls.length > 0 && playingIndexRef.current === -1) {
+    if (_urls.length > 0 && playingIndex === -1) {
       return 0   
     }
-    if (playModeRef.current === `Shuffle`) {
-      return randomPlayingIndex(playingIndexRef.current, _urls.length)
+    if (playMode === `Shuffle`) {
+      return randomPlayingIndex(playingIndex, _urls.length)
     }
-    if (playingIndexRef.current >= (_urls.length - 1)) {
+    if (playingIndex >= (_urls.length - 1)) {
       return 0
     }
     
-    return playingIndexRef.current + 1
+    return playingIndex + 1
   }
 
   const playPrevTrack = () => {
@@ -278,7 +278,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       audioRef.current?.pause()
       setPlaying(false)
     },
-    toggle: () => {
+    togglePlay: () => {
       playing ? controls.pause() : controls.play()
     },
     playTrack,
@@ -297,10 +297,10 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       }
     },
     nextPlayMode: (_mode?: PlayMode) => {
-      const currentIndex = modes.indexOf(playModeRef.current)
+      const currentIndex = modes.indexOf(playMode)
       const nextIndex = (currentIndex + 1) % modes.length
       const mode = _mode || modes[nextIndex]
-      playModeRef.current = mode
+      setPlayMode(mode)
     },
     setPlaybackRate: (rate: number) => {
       rate = Math.min(Math.max(rate, 0.5), 3.0)
