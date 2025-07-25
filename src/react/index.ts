@@ -7,13 +7,20 @@ export { AudioProvider } from 'web-audio-hooks/react'
 
 /**
  * Represents the playback mode for audio tracks
- * @typedef {('RO' | 'RA' | 'S')} PlayMode
- * - 'RO' - Repeat One playback mode
- * - 'RA' - Repeat All playback mode
- * - 'S' - Shuffle playback mode
+ * @typedef {('RepeatOne' | 'RepeatAll' | 'Shuffle')} PlayMode
+ * - 'RepeatOne' - Repeat One playback mode
+ * - 'RepeatAll' - Repeat All playback mode
+ * - 'Shuffle' - Shuffle playback mode
  */
-type PlayMode = 'RepeatOne' | 'RepeatAll' | 'Shuffle'
-const modes: PlayMode[] = [`RepeatOne`, `RepeatAll`, `Shuffle`]
+
+export const MODE = {
+  RepeatAll: `RepeatAll`,
+  RepeatOne: `RepeatOne`,
+  Shuffle: `Shuffle`,
+}
+const MODES = [`RepeatOne`, `RepeatAll`, `Shuffle`] as const
+
+type PlayMode = (typeof MODES)[number]
 
 /**
  * AudioControls interface for audio playback functionality
@@ -58,13 +65,13 @@ export interface AudioControls {
    * Set the list of audio URLs
    * @param urls - Array of URLs for audio tracks
    */
-  setList: (urls: string[]) => void
+  setAudioList: (urls: string[]) => void
 }
 /**
  * State interface for audio playback functionality
  */
 export interface AudioState {
-  list: string[]
+  audios: string[]
   /** Whether audio is currently playing */
   playing: boolean
   /** Index of currently playing track in playlist */
@@ -85,7 +92,7 @@ export interface AudioState {
  * Return type for useAudioList hook
  * @property state - Current state of audio playback including playing status, time, volume etc
  * @property controls - Methods to control audio playback like play, pause, seek etc
- * @property setList - Function to update the list of audio URLs
+ * @property setAudioList - Function to update the list of audio URLs
  */
 export type UseAudioListReturn = {
   state: AudioState
@@ -98,7 +105,7 @@ export type UseAudioListReturn = {
  * @returns Object containing playback state, controls, and URL setter
  * @example
  * ```tsx
- * const { state, controls, setList } = useAudioList([
+ * const { state, controls, setAudioList } = useAudioList([
  *   'audio1.mp3',
  *   'audio2.mp3'
  * ])
@@ -113,7 +120,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
   const [playMode, setPlayMode] = useState<AudioState['playMode']>(`RepeatAll`)
   const [playingIndex, setPlayingIndex] = useState<AudioState['playingIndex']>(-1)
 
-  const [_urls, setList] = useState(urls)
+  const [audioUrls, setAudioList] = useState(urls)
   const [playing, setPlaying] = useState<AudioState['playing']>(false)
   const [duration, setDuration] = useState<AudioState['duration']>(0)
   const [volume, setVolume] = useState<AudioState['volume']>(0.5)
@@ -121,7 +128,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
   const [playbackRate, setPlaybackRate] = useState<AudioState['playbackRate']>(1)
 
   const state: AudioState = useMemo(() => ({
-    list: _urls,
+    audios: audioUrls,
     volume,
     playing,
     duration,
@@ -130,7 +137,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
     playMode,
     playingIndex,
   }), [
-    _urls,
+    audioUrls,
     volume,
     playing,
     duration,
@@ -208,7 +215,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
   )
 
   const playTrack = useCallback(async (index: number) => {
-    if (index < 0 || index >= _urls.length) {
+    if (index < 0 || index >= audioUrls.length) {
       console.warn(`Invalid index: ${index}`)
       return
     }
@@ -216,7 +223,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
     setPlayingIndex(index)
 
     setPlaying(false)
-    initAudio(_urls[playingIndex])
+    initAudio(audioUrls[playingIndex])
 
     try {
       if (context?.state === `suspended`) {
@@ -228,27 +235,27 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       console.error(`播放失败:`, err)
     }
 
-  }, [context, _urls, initAudio])
+  }, [context, audioUrls, initAudio])
 
   const getPrevIndex = () => {
-    if (_urls.length === 0) return -1
+    if (audioUrls.length === 0) return -1
     if (playMode === `Shuffle`) {
-      return randomPlayingIndex(playingIndex, _urls.length)
+      return randomPlayingIndex(playingIndex, audioUrls.length)
     }
     if (playingIndex <= 0) {
-      return _urls.length - 1
+      return audioUrls.length - 1
     }
     return playingIndex - 1
   }
   const getNextIndex = () => {
-    if (_urls.length === 0) return -1
-    if (_urls.length > 0 && playingIndex === -1) {
+    if (audioUrls.length === 0) return -1
+    if (audioUrls.length > 0 && playingIndex === -1) {
       return 0   
     }
     if (playMode === `Shuffle`) {
-      return randomPlayingIndex(playingIndex, _urls.length)
+      return randomPlayingIndex(playingIndex, audioUrls.length)
     }
-    if (playingIndex >= (_urls.length - 1)) {
+    if (playingIndex >= (audioUrls.length - 1)) {
       return 0
     }
     
@@ -269,7 +276,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
         await audioRef.current.play()
         setPlaying(true)
       } else {
-        if (_urls.length > 0) {
+        if (audioUrls.length > 0) {
           playTrack(0)
         }
       }
@@ -282,7 +289,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       playing ? controls.pause() : controls.play()
     },
     playTrack,
-    setList,
+    setAudioList,
     prev: playPrevTrack,
     next: playNextTrack,
     seek: (time: number) => {
@@ -297,9 +304,9 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       }
     },
     nextPlayMode: (_mode?: PlayMode) => {
-      const currentIndex = modes.indexOf(playMode)
-      const nextIndex = (currentIndex + 1) % modes.length
-      const mode = _mode || modes[nextIndex]
+      const currentIndex = MODES.indexOf(playMode)
+      const nextIndex = (currentIndex + 1) % MODES.length
+      const mode = _mode || MODES[nextIndex]
       setPlayMode(mode)
     },
     setPlaybackRate: (rate: number) => {

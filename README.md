@@ -110,10 +110,12 @@ Returns an object containing the current state and controls for audio playback.
 - `currentTime`: `number` - Current playback position in seconds.
 - `playbackRate`: `number` - Current playback speed between `0.5` and `3.0`.
 - `playingIndex`: `number` - Index of currently playing track in playlist.
+- `playMode`: `PlayMode: 'RepeatOne' | 'RepeatAll' | 'Shuffle'` - Represents the playback mode for audio tracks.
 
 ### `controls`
 
 - `play()`: Start playing the current audio track.
+- `togglePlay()`: Toggle play between play and pause.
 - `pause()`: Pause the current audio track.
 - `prev()`: Go to previous track based on current play mode.
 - `next()`: Skip to next track based on current play mode.
@@ -126,7 +128,7 @@ Returns an object containing the current state and controls for audio playback.
   type PlayMode = 'RepeatAll' | 'RepeatOne' | 'Shuffle'
   ```
 
-### `setList(urls: string[])`
+### `setAudioList(urls: string[])`
 
 Update the list of audio URLs.
 
