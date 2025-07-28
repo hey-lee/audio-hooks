@@ -7,18 +7,22 @@ export { AudioProvider } from 'web-audio-hooks/react'
 
 /**
  * Represents the playback mode for audio tracks
- * @typedef {('RepeatOne' | 'RepeatAll' | 'Shuffle')} PlayMode
- * - 'RepeatOne' - Repeat One playback mode
- * - 'RepeatAll' - Repeat All playback mode
+ * @typedef {('Shuffle' | 'SingleOnce' | 'SingleLoop' | 'SequentialOnce' | 'SequentialLoop')} PlayMode
  * - 'Shuffle' - Shuffle playback mode
+ * - 'SingleLoop' - Repeat One playback mode
+ * - 'SingleOnce' - Play current track once then stop
+ * - 'SequentialOnce' - Play all tracks once then stop
+ * - 'SequentialLoop' - Repeat All playback mode
  */
 
-export const MODE = {
-  RepeatAll: `RepeatAll`,
-  RepeatOne: `RepeatOne`,
+export const MODE: Record<PlayMode, PlayMode> = {
   Shuffle: `Shuffle`,
+  SingleOnce: `SingleOnce`,
+  SingleLoop: `SingleLoop`,
+  SequentialOnce: `SequentialOnce`,
+  SequentialLoop: `SequentialLoop`,
 }
-const MODES = [`RepeatOne`, `RepeatAll`, `Shuffle`] as const
+const MODES = [`Shuffle`, `SingleOnce`, `SingleLoop`, `SequentialOnce`, `SequentialLoop`] as const
 
 type PlayMode = (typeof MODES)[number]
 
@@ -36,7 +40,7 @@ export interface AudioControls {
   next: () => void
   /** Go to previous track based on current play mode */
   prev: () => void
-  /** 
+  /**
    * Seek to specific time in current track
    * @param time - Target time in seconds
    */
@@ -125,7 +129,7 @@ export const useAudioList = (urls: string[], {
   const audioPoolRef = useRef<HTMLAudioElement[]>([])
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const gainNode = useGain(0.5)
-  const [playMode, setPlayMode] = useState<AudioState['playMode']>(`RepeatAll`)
+  const [playMode, setPlayMode] = useState<AudioState['playMode']>(MODE.SequentialOnce)
   const [playingIndex, setPlayingIndex] = useState<AudioState['playingIndex']>(-1)
 
   const [audioUrls, setAudioList] = useState(urls)
@@ -159,7 +163,7 @@ export const useAudioList = (urls: string[], {
     const available = audioPoolRef.current.find((a) => a.ended)
     if (available && url) {
       available.src = url
-      return available;
+      return available
     }
     return new Audio(url)
   }
@@ -171,7 +175,7 @@ export const useAudioList = (urls: string[], {
         audioRef.current?.pause()
         sourceRef.current.disconnect()
       }
-      
+
       audioRef.current = getAudio(url)
       const audio = audioRef.current
       audio.playbackRate = playbackRate
@@ -191,11 +195,20 @@ export const useAudioList = (urls: string[], {
 
       const onAudioEnded = () => {
         onEnded?.()
-        if (playMode === `RepeatOne`) {
+        if (playMode === `SingleLoop`) {
           audio.currentTime = 0
-          audio.play()   
-        } else {
-          playNextTrack()
+          audio.play()
+        } else if (playMode === `SingleOnce`) {
+          setPlaying(false)
+          audioRef.current?.pause()
+        } else { // SequentialLoop, Shuffle, and SequentialOnce
+          const nextIndex = getNextIndex(true) // Pass true to indicate 'Once' modes
+          if (nextIndex !== -1) {
+            playTrack(nextIndex)
+          } else if (playMode === `SequentialOnce`) { // If no next track in SequentialOnce, stop
+            setPlaying(false)
+            audioRef.current?.pause()
+          }
         }
         audioPoolRef.current.push(audio)
       }
@@ -220,19 +233,24 @@ export const useAudioList = (urls: string[], {
         audio.removeEventListener(`ended`, onAudioEnded)
       }
     },
-    [context, gainNode, playbackRate]
+    [context, gainNode, playbackRate, playMode]
   )
 
   const playTrack = useCallback(async (index: number) => {
     if (index < 0 || index >= audioUrls.length) {
       console.warn(`Invalid index: ${index}`)
+      // If the index is invalid (e.g., end of SequentialOnce playlist), stop playing
+      if (playMode === `SequentialOnce`) {
+        setPlaying(false)
+        audioRef.current?.pause()
+      }
       return
     }
 
     setPlayingIndex(index)
 
     setPlaying(false)
-    initAudio(audioUrls[playingIndex])
+    initAudio(audioUrls[index])
 
     try {
       if (context?.state === `suspended`) {
@@ -244,7 +262,7 @@ export const useAudioList = (urls: string[], {
       console.error(`播放失败:`, err)
     }
 
-  }, [context, audioUrls, initAudio])
+  }, [context, audioUrls, initAudio, playMode])
 
   const getPrevIndex = () => {
     if (audioUrls.length === 0) return -1
@@ -256,18 +274,30 @@ export const useAudioList = (urls: string[], {
     }
     return playingIndex - 1
   }
-  const getNextIndex = () => {
+
+  // Add `isFromEndedEvent` to handle 'Once' modes
+  const getNextIndex = (isFromEndedEvent = false) => {
     if (audioUrls.length === 0) return -1
     if (audioUrls.length > 0 && playingIndex === -1) {
-      return 0   
+      return 0
     }
     if (playMode === `Shuffle`) {
       return randomPlayingIndex(playingIndex, audioUrls.length)
     }
-    if (playingIndex >= (audioUrls.length - 1)) {
-      return 0
+
+    if (playMode === `SingleOnce`) {
+      return -1 // No next track for `SingleOnce`
     }
-    
+
+    // For `SequentialOnce` and `SequentialLoop`
+    if (playingIndex >= (audioUrls.length - 1)) {
+      if (playMode === `SequentialLoop`) {
+        return 0 // Loop back to the beginning
+      } else if (playMode === `SequentialOnce` && isFromEndedEvent) {
+        return -1 // Stop if at the end of SequentialOnce and triggered by onEnded
+      }
+    }
+
     return playingIndex + 1
   }
 
