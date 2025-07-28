@@ -88,6 +88,12 @@ export interface AudioState {
   playMode: PlayMode
 }
 
+interface AudioEvents {
+  onEnded?: () => void
+}
+
+export type AudioOptions = AudioEvents
+
 /**
  * Return type for useAudioList hook
  * @property state - Current state of audio playback including playing status, time, volume etc
@@ -111,7 +117,9 @@ export type UseAudioListReturn = {
  * ])
  * ```
  */
-export const useAudioList = (urls: string[]): UseAudioListReturn  => {
+export const useAudioList = (urls: string[], {
+  onEnded,
+}: AudioOptions = {}): UseAudioListReturn  => {
   const context = useAudioContext()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioPoolRef = useRef<HTMLAudioElement[]>([])
@@ -182,6 +190,7 @@ export const useAudioList = (urls: string[]): UseAudioListReturn  => {
       }
 
       const onAudioEnded = () => {
+        onEnded?.()
         if (playMode === `RepeatOne`) {
           audio.currentTime = 0
           audio.play()   
