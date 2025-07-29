@@ -119,13 +119,14 @@ Returns an object containing the current state and controls for audio playback.
 - `pause()`: Pause the current audio track.
 - `prev()`: Go to previous track based on current play mode.
 - `next()`: Skip to next track based on current play mode.
+- `switchAudio(index: number)`: Switch to a specific track in the playlist without playing it.
 - `setVolume(volume: number)`: Set audio volume between `0` and `1`.
 - `seek(time: number)`: Seeks to the specified time in seconds.
 - `playTrack(index: number)`: Play specific track by index.
 - `setPlaybackRate(rate: number)`: Set playback rate between `0.5` and `3.0`.
 - `nextPlayMode(mode?: PlayMode)`: Change the play mode to the next mode in the list.
   ```ts
-  type PlayMode = 'RepeatAll' | 'RepeatOne' | 'Shuffle'
+  type PlayMode = 'Shuffle' | 'SingleOnce' | 'SingleLoop' | 'SequentialOnce' | 'SequentialLoop'
   ```
 
 ### `setAudioList(urls: string[])`

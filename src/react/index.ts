@@ -70,6 +70,11 @@ export interface AudioControls {
    * @param urls - Array of URLs for audio tracks
    */
   setAudioList: (urls: string[]) => void
+  /**
+   * Switch to a specific track in the playlist without playing it
+   * @param index - Index of track to switch to
+   */
+  switchAudio: (index: number) => void
 }
 /**
  * State interface for audio playback functionality
@@ -355,6 +360,7 @@ export const useAudioList = (urls: string[], {
         audioRef.current.playbackRate = rate
       }
     },
+    switchAudio: setPlayingIndex
   }
 
   return {
