@@ -46,6 +46,16 @@ export interface AudioControls {
    */
   seek: (time: number) => void
   /**
+   * Fast forward by specified milliseconds
+   * @param ms - Number of milliseconds to fast forward (default: 5000)
+   */
+  fastForward: (ms?: number) => void
+  /**
+   * Rewind by specified milliseconds
+   * @param ms - Number of milliseconds to rewind (default: 5000)
+   */
+  rewind: (ms?: number) => void
+  /**
    * Set audio volume
    * @param volume - Volume level between 0 and 1
    */
@@ -339,6 +349,18 @@ export const useAudioList = (urls: string[], {
     seek: (time: number) => {
       if (audioRef.current) {
         audioRef.current.currentTime = time
+      }
+    },
+    fastForward: (ms: number = 5000) => {
+      if (audioRef.current) {
+        const newTime = Math.min(audioRef.current.currentTime + ms / 1000, audioRef.current.duration || 0)
+        audioRef.current.currentTime = newTime
+      }
+    },
+    rewind: (ms: number = 5000) => {
+      if (audioRef.current) {
+        const newTime = Math.max(audioRef.current.currentTime - ms / 1000, 0)
+        audioRef.current.currentTime = newTime
       }
     },
     setVolume: (volume: number) => {
